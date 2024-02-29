@@ -28,6 +28,8 @@ async function run() {
     const db = client.db("l2-assignment6");
     const collection = db.collection("users");
     const supplyCollection = db.collection("supply");
+    const gratitudeCollection = db.collection("gratitudes");
+    const testimonialCollection = db.collection("testimonials");
 
     // User Registration
     app.post("/api/v1/register", async (req, res) => {
@@ -60,6 +62,7 @@ async function run() {
 
       // Find user by email
       const user = await collection.findOne({ email });
+      console.log(user);
       if (!user) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
@@ -71,9 +74,13 @@ async function run() {
       }
 
       // Generate JWT token
-      const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
-        expiresIn: process.env.EXPIRES_IN,
-      });
+      const token = jwt.sign(
+        { email: user.email, name: user.name, photo: user?.photo || "" },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: process.env.EXPIRES_IN,
+        }
+      );
 
       res.json({
         success: true,
@@ -84,6 +91,7 @@ async function run() {
 
     // ==============================================================
 
+    // ----------------- supply releted -----------------
     // create supply
     app.post("/api/v1/create-supply", async (req, res) => {
       try {
@@ -184,6 +192,258 @@ async function run() {
         });
       }
     });
+    //-------------------- supply operation end ------------------------
+
+    //---------------------- provider or doner releted -------------------
+    // get all providers based on theire total amount
+    app.get("/api/v1/providers", async (req, res) => {
+      try {
+        const result = await supplyCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$providerEmail",
+                providerName: { $first: "$providerName" },
+                providerEmail: { $first: "$providerEmail" },
+                providerImage: { $first: "$providerPhoto" },
+                totalAmount: { $sum: "$amount" },
+              },
+            },
+            {
+              $sort: {
+                totalAmount: -1,
+              },
+            },
+            {
+              $project: {
+                providerName: 1,
+                providerEmail: 1,
+                providerImage: 1,
+                totalAmount: 1,
+              },
+            },
+          ])
+          .toArray();
+        res.status(200).json({
+          success: true,
+          message: "successfully retrieved providers data",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "providers retrieved failed",
+        });
+      }
+    });
+    //-------------------- supply operation end ------------------------
+
+    // ----------------- Community Gratitude Wall releted -----------------
+    // create Community Gratitude Wall
+    app.post("/api/v1/create-gratitude", async (req, res) => {
+      try {
+        const gratitudeData = req.body;
+        const result = await gratitudeCollection.insertOne(gratitudeData);
+        res.status(201).json({
+          success: true,
+          message: "gratitude created successfully",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "gratitude create failed",
+        });
+      }
+    });
+
+    // get all gratitude
+    app.get("/api/v1/gratitudes", async (req, res) => {
+      try {
+        const result = await gratitudeCollection.find().toArray();
+        res.status(200).json({
+          success: true,
+          message: "successfully retrieved gratituds data",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "supplies gratitudes failed",
+        });
+      }
+    });
+
+    // get single gratitude data
+    app.get("/api/v1/gratitude/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await gratitudeCollection.findOne(query);
+        res.status(200).json({
+          success: true,
+          message: "successfully retrieved gratitude data",
+          data: result,
+        });
+      } catch (error) {
+        console.log(error);
+        res.status(400).json({
+          success: false,
+          message: error.message || "gratitude retrieved failed",
+        });
+      }
+    });
+
+    // update gratitude data
+    app.patch("/api/v1/gratitude/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedData = req.body;
+
+        const result = await gratitudeCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: { ...updatedData },
+          }
+        );
+
+        res.status(200).json({
+          success: false,
+          message: "gratitude updated successfully",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "gratitude update failed",
+        });
+      }
+    });
+
+    // delete gratitude
+    app.delete("/api/v1/gratitude/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const result = await gratitudeCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.status(200).json({
+          success: true,
+          message: "successfully delete gratitude data",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message | "gratitude delete failed",
+        });
+      }
+    });
+    //----------------------------- gratitude releted operation end------------------------
+
+    // ----------------- provider testimonial releted -----------------
+    //  create-testimonial
+    app.post("/api/v1/create-testimonial", async (req, res) => {
+      try {
+        const TestimonialData = req.body;
+        const result = await testimonialCollection.insertOne(TestimonialData);
+        res.status(201).json({
+          success: true,
+          message: "Testimonial successfully created!",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "Testimonial create failed",
+        });
+      }
+    });
+
+    // get all testimonial about donation posts
+    app.get("/api/v1/testimonial", async (req, res) => {
+      try {
+        const result = await testimonialCollection.find().toArray();
+        res.status(200).json({
+          success: true,
+          message: "successfully retrieved testimonial data",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "supplies Testimonial failed",
+        });
+      }
+    });
+
+    // get single testimonial data
+    app.get("/api/v1/testimonial/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await testimonialCollection.findOne(query);
+        res.status(200).json({
+          success: true,
+          message: "successfully retrieved testimonial data",
+          data: result,
+        });
+      } catch (error) {
+        console.log(error);
+        res.status(400).json({
+          success: false,
+          message: error.message || "testimonial retrieved failed",
+        });
+      }
+    });
+
+    // update testimonial data
+    app.patch("/api/v1/testimonial/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedData = req.body;
+
+        const result = await testimonialCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: { ...updatedData },
+          }
+        );
+
+        res.status(200).json({
+          success: false,
+          message: "testimonial updated successfully",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "testimonial update failed",
+        });
+      }
+    });
+
+    // delete testimonial
+    app.delete("/api/v1/testimonial/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const result = await testimonialCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.status(200).json({
+          success: true,
+          message: "successfully delete testimonial data",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message | "testimonial delete failed",
+        });
+      }
+    });
+    //----------------------------- testimonial releted operation end------------------------
+
     // ==============================================================
 
     // Start the server
