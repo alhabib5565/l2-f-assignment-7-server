@@ -30,6 +30,7 @@ async function run() {
     const supplyCollection = db.collection("supply");
     const gratitudeCollection = db.collection("gratitudes");
     const testimonialCollection = db.collection("testimonials");
+    const volunteerCollection = db.collection("volunteer");
 
     // User Registration
     app.post("/api/v1/register", async (req, res) => {
@@ -273,8 +274,28 @@ async function run() {
         });
       }
     });
+    // get all gratitude by supply id
+    app.get("/api/v1/gratitudes/supply/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        console.log(id);
+        const query = { supplyId: id };
+        const result = await gratitudeCollection.find(query).toArray();
+        res.status(200).json({
+          success: true,
+          message: "successfully retrieved gratituds data using supply id",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message:
+            error.message || "supplies gratitudes failed using supply id",
+        });
+      }
+    });
 
-    // get single gratitude data
+    // get single gratitude data for showing details page
     app.get("/api/v1/gratitude/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -443,6 +464,109 @@ async function run() {
       }
     });
     //----------------------------- testimonial releted operation end------------------------
+
+    // ----------------- volunteer releted -----------------
+    //  create-volunteer
+    app.post("/api/v1/create-volunteer", async (req, res) => {
+      try {
+        const volunteerData = req.body;
+        const result = await volunteerCollection.insertOne(volunteerData);
+        res.status(201).json({
+          success: true,
+          message: "successfully register as a volunteer!",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "volunteer create failed",
+        });
+      }
+    });
+
+    // get all volunteer about donation posts
+    app.get("/api/v1/volunteer", async (req, res) => {
+      try {
+        const result = await volunteerCollection.find().toArray();
+        res.status(200).json({
+          success: true,
+          message: "successfully retrieved volunteer data",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "supplies volunteer failed",
+        });
+      }
+    });
+
+    // get single volunteer data
+    app.get("/api/v1/volunteer/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await volunteerCollection.findOne(query);
+        res.status(200).json({
+          success: true,
+          message: "successfully retrieved volunteer data",
+          data: result,
+        });
+      } catch (error) {
+        console.log(error);
+        res.status(400).json({
+          success: false,
+          message: error.message || "volunteer retrieved failed",
+        });
+      }
+    });
+
+    // update volunteer data
+    app.patch("/api/v1/volunteer/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedData = req.body;
+
+        const result = await volunteerCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: { ...updatedData },
+          }
+        );
+
+        res.status(200).json({
+          success: false,
+          message: "volunteer updated successfully",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message || "volunteer update failed",
+        });
+      }
+    });
+
+    // delete volunteer
+    app.delete("/api/v1/volunteer/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const result = await volunteerCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.status(200).json({
+          success: true,
+          message: "successfully delete volunteer data",
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          message: error.message | "volunteer delete failed",
+        });
+      }
+    });
+    //----------------------------- volunteer releted operation end------------------------
 
     // ==============================================================
 
